@@ -1,9 +1,10 @@
 # Keypirinha launcher (keypirinha.com)
 
+import base64
 import json
+import urllib.request
 
 import keypirinha as kp
-import keypirinha_net as kpnet
 
 
 class Config:
@@ -11,10 +12,13 @@ class Config:
     DEFAULT_CATALOGUE_PREFIX = "Jenkins-"
     SECTION = "jenkins"
 
-    def __init__(self, name: str, base_url: str, folders_to_scan: list, custom_search_term: str):
+    def __init__(self, name: str, base_url: str, folders_to_scan: list,
+                 username: str, api_token: str, custom_search_term: str):
         self.name = name
         self.base_url = base_url
         self.folders_to_scan = folders_to_scan
+        self.username = username
+        self.api_token = api_token
         self.custom_search_term = custom_search_term
 
     def get_catalogue_name(self):
@@ -52,7 +56,7 @@ class Jenkins(kp.Plugin):
         target = current_item.target()
         if target.startswith(Config.DEFAULT_CATALOGUE_PREFIX):
             config = [config for config in self.configs if Config.DEFAULT_CATALOGUE_PREFIX + config.name == target][0]
-            self.set_suggestions(self._jenkins_job_suggestions(config), kp.Match.FUZZY, kp.Sort.SCORE_DESC)
+            self.set_suggestions(self._fetch_job_suggestion(config), kp.Match.FUZZY, kp.Sort.SCORE_DESC)
 
     def on_execute(self, item, action):
         pass
@@ -65,18 +69,6 @@ class Jenkins(kp.Plugin):
 
     def on_events(self, flags):
         pass
-
-    def _jenkins_job_suggestions(self, config: Config):
-        suggestions = []
-        suggestions.append(self.create_item(
-            category=kp.ItemCategory.URL,
-            label="Admin/Trigger",
-            short_desc="Admin/Trigger job",
-            target="http://localhost:8080/Jenkins/",
-            args_hint=kp.ItemArgsHint.FORBIDDEN,
-            hit_hint=kp.ItemHitHint.IGNORE
-        ))
-        return suggestions
 
     def _create_configs(self, settings):
         configs = []
@@ -98,6 +90,8 @@ class Jenkins(kp.Plugin):
                 section_name,
                 settings.get("jenkins_base_url", section=section, fallback="").strip("/"),
                 settings.get("folders_to_scan", section=section, fallback="").split(","),
+                settings.get("username", section=section, fallback="").strip(),
+                settings.get("api_token", section=section, fallback="").strip(),
                 settings.get("custom_search_term", section=section, fallback="").strip()
             ))
         return configs
@@ -105,20 +99,27 @@ class Jenkins(kp.Plugin):
     def _fetch_job_suggestion(self, config: Config):
         suggestions = []
         for folder in config.folders_to_scan:
-            jobs = http_get_json("{}/job/{}/api/json?tree[fullName,url]".format(config.base_url, folder))
+            url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
+            if not folder.strip():
+                url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
+            headers = {'Authorization': ''}
+            jobs = http_get_json(url, config.username, config.api_token)["jobs"]
             for job in jobs:
                 suggestions.append(self.create_item(
                     category=kp.ItemCategory.URL,
-                    label=job["fullName"],
+                    label=job["name"],
                     short_desc=job["fullName"],
                     target=job["url"],
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.IGNORE
                 ))
+        return suggestions
 
 
-def http_get_json(url: str):
-    opener = kpnet.build_urllib_opener()
-    with opener.open(url) as request:
-        response = request.load()
-        return json.loads(response)
+def http_get_json(url: str, username: str, token: str):
+    request = urllib.request.Request(url)
+    if username.strip() and token.strip():
+        base64string = base64.b64encode((username + ":" + token).encode("ascii"))
+        request.add_header("Authorization", "Basic {}".format(base64string.decode("ascii")))
+    response = urllib.request.urlopen(request)
+    return json.loads(response.read())
