@@ -5,6 +5,7 @@ import json
 import urllib.request
 
 import keypirinha as kp
+import keypirinha_util as kpu
 
 
 class Config:
@@ -59,7 +60,7 @@ class Jenkins(kp.Plugin):
             self.set_suggestions(self._fetch_job_suggestion(config), kp.Match.FUZZY, kp.Sort.SCORE_DESC)
 
     def on_execute(self, item, action):
-        pass
+        kpu.execute_default_action(self, item, action)
 
     def on_activated(self):
         pass
@@ -68,7 +69,12 @@ class Jenkins(kp.Plugin):
         pass
 
     def on_events(self, flags):
-        pass
+        if flags & kp.Events.PACKCONFIG:
+            self.log("reloading due to config change...")
+            self.__init__()
+            self.on_start()
+            self.on_catalog()
+            self.log("reloading done...")
 
     def _create_configs(self, settings):
         configs = []
@@ -99,10 +105,10 @@ class Jenkins(kp.Plugin):
     def _fetch_job_suggestion(self, config: Config):
         suggestions = []
         for folder in config.folders_to_scan:
+            folder = folder.strip("/").replace("/", "/job/")
             url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
             if not folder.strip():
                 url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
-            headers = {'Authorization': ''}
             jobs = http_get_json(url, config.username, config.api_token)["jobs"]
             for job in jobs:
                 suggestions.append(self.create_item(
