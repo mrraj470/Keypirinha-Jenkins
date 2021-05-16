@@ -14,18 +14,18 @@ class Config:
     SECTION = "jenkins"
 
     def __init__(self, name: str, base_url: str, folders_to_scan: list,
-                 username: str, api_token: str, custom_search_term: str):
+                 username: str, api_token: str, searchable_as: str):
         self.name = name
         self.base_url = base_url
         self.folders_to_scan = folders_to_scan
         self.username = username
         self.api_token = api_token
-        self.custom_search_term = custom_search_term
+        self.searchable_as = searchable_as
 
     def get_catalogue_name(self):
-        if not self.custom_search_term.strip():
+        if not self.searchable_as.strip():
             return self.DEFAULT_CATALOGUE_PREFIX + self.name
-        return self.custom_search_term
+        return self.searchable_as
 
 
 class Jenkins(kp.Plugin):
@@ -98,7 +98,7 @@ class Jenkins(kp.Plugin):
                 settings.get("folders_to_scan", section=section, fallback="").split(","),
                 settings.get("username", section=section, fallback="").strip(),
                 settings.get("api_token", section=section, fallback="").strip(),
-                settings.get("custom_search_term", section=section, fallback="").strip()
+                settings.get("searchable_as", section=section, fallback="").strip()
             ))
         return configs
 
