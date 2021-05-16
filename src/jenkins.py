@@ -14,13 +14,14 @@ class Config:
     SECTION = "jenkins"
 
     def __init__(self, name: str, base_url: str, folders_to_scan: list,
-                 username: str, api_token: str, searchable_as: str):
+                 username: str, api_token: str, searchable_as: str, enable_cache: bool):
         self.name = name
         self.base_url = base_url
         self.folders_to_scan = folders_to_scan
         self.username = username
         self.api_token = api_token
         self.searchable_as = searchable_as
+        self.enable_cache = enable_cache
 
     def get_catalogue_name(self):
         if not self.searchable_as.strip():
@@ -98,7 +99,8 @@ class Jenkins(kp.Plugin):
                 settings.get("folders_to_scan", section=section, fallback="").split(","),
                 settings.get("username", section=section, fallback="").strip(),
                 settings.get("api_token", section=section, fallback="").strip(),
-                settings.get("searchable_as", section=section, fallback="").strip()
+                settings.get("searchable_as", section=section, fallback="").strip(),
+                settings.get_bool("enable_cache", section=section, fallback=True)
             ))
         return configs
 
@@ -122,8 +124,8 @@ class Jenkins(kp.Plugin):
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.IGNORE
                 ))
-
-        self.cache[config.name] = suggestions
+        if config.enable_cache:
+            self.cache[config.name] = suggestions
         return suggestions
 
 
