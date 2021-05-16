@@ -2,6 +2,7 @@
 
 import base64
 import json
+import re
 import urllib.request
 
 import keypirinha as kp
@@ -116,10 +117,11 @@ class Jenkins(kp.Plugin):
                 url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
             jobs = http_get_json(url, config.username, config.api_token)["jobs"]
             for job in jobs:
+                job_type = re.sub(r".*\.", "", job["_class"])
                 suggestions.append(self.create_item(
                     category=kp.ItemCategory.URL,
                     label=job["name"],
-                    short_desc=job["fullName"],
+                    short_desc=job["fullName"] + " [{}]".format(job_type),
                     target=job["url"],
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.IGNORE
