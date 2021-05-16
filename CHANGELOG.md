@@ -1,6 +1,6 @@
 ## Change Log
 
-### v1.0
+### v0.0.1 [Unofficial]
 
 * Feature to search jenkins jobs.
 * Supports multi configuration.
