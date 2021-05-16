@@ -6,6 +6,13 @@ This is Jenkins, a plugin for the
 This plugin offers features to search jobs in Jenkins. Supports multi section configuration, so searching more than one
 Jenkins is possible.
 
+## Usage
+
+There is no specific search term for this plugin, because the search term itself is configurable.
+
+However, if the search term is not configured, then by default, the items will be catalogued as `
+Jenkins-{{section_name}}` for every config section.
+
 ## Download
 
 Download the latest release from [`here`](https://github.com/mrraj470/keypirinha-jenkins/releases).
@@ -18,10 +25,11 @@ Once the `Jenkins.keypirinha-package` file is installed, move it to the `Install
 * **Or** `%APPDATA%\Keypirinha\InstalledPackages` in **Installed mode** (the final path would look like
   `C:\Users\%USERNAME%\AppData\Roaming\Keypirinha\InstalledPackages`)
 
-## Usage
+## Configure
 
-**TODO:** list the items, if any, inserted to the Catalog by the plugin(s) of this package. Some plugins only make
-suggestions, in which case a description of what kind of suggestions are to be expected by the user may help.
+Please refer the config file for configuration documentation. Also see
+this [`sample config file`](https://github.com/mrraj470/Keypirinha-Jenkins/blob/master/sample_config_file.ini) for
+reference.
 
 ## License
 
