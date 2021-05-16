@@ -29,13 +29,13 @@ class Config:
 
 
 class Jenkins(kp.Plugin):
-
     def __init__(self):
         super().__init__()
         self.configs = self._create_configs(self.load_settings())
+        self.cache = {}
 
     def on_start(self):
-        pass
+        self.cache.clear()
 
     def on_catalog(self):
         suggestions = []
@@ -103,6 +103,9 @@ class Jenkins(kp.Plugin):
         return configs
 
     def _fetch_job_suggestion(self, config: Config):
+        if config.name in self.cache:
+            return self.cache[config.name]
+
         suggestions = []
         for folder in config.folders_to_scan:
             folder = folder.strip("/").replace("/", "/job/").strip()
@@ -119,6 +122,8 @@ class Jenkins(kp.Plugin):
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.IGNORE
                 ))
+
+        self.cache[config.name] = suggestions
         return suggestions
 
 
