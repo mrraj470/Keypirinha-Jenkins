@@ -8,6 +8,8 @@ import urllib.request
 import keypirinha as kp
 import keypirinha_util as kpu
 
+from .helper import Cache
+
 
 class Config:
     """ Config section as model """
@@ -34,7 +36,7 @@ class Jenkins(kp.Plugin):
     def __init__(self):
         super().__init__()
         self.configs = self._create_configs(self.load_settings())
-        self.cache = {}
+        self.cache = Cache(self.get_package_cache_path(create=True))
 
     def on_start(self):
         self.cache.clear()
@@ -106,28 +108,36 @@ class Jenkins(kp.Plugin):
         return configs
 
     def _fetch_job_suggestion(self, config: Config):
-        if config.name in self.cache:
-            return self.cache[config.name]
-
-        suggestions = []
-        for folder in config.folders_to_scan:
-            folder = folder.strip("/").replace("/", "/job/").strip()
-            url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
-            if not folder.strip():
-                url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
-            jobs = http_get_json(url, config.username, config.api_token)["jobs"]
-            for job in jobs:
-                job_type = re.sub(r".*\.", "", job["_class"])
-                suggestions.append(self.create_item(
-                    category=kp.ItemCategory.URL,
-                    label=job["name"],
-                    short_desc=job["fullName"] + " [{}]".format(job_type),
-                    target=job["url"],
-                    args_hint=kp.ItemArgsHint.FORBIDDEN,
-                    hit_hint=kp.ItemHitHint.IGNORE
-                ))
+        jobs_response = []
+        if self.cache.exists(config.name):
+            # using cached json response
+            jobs_response = self.cache.fetch_object(config.name)
+        else:
+            for folder in config.folders_to_scan:
+                folder = folder.strip("/").replace("/", "/job/").strip()
+                url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
+                if not folder.strip():
+                    url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
+                jobs = http_get_json(url, config.username, config.api_token)["jobs"]
+                jobs_response.extend(jobs)
+        suggestions = self._create_job_items(jobs_response)
         if config.enable_cache:
-            self.cache[config.name] = suggestions
+            # saving response in plugin cache dir
+            self.cache.save_object(jobs_response, config.name)
+        return suggestions
+
+    def _create_job_items(self, jobs: list):
+        suggestions = []
+        for job in jobs:
+            job_type = re.sub(r".*\.", "", job["_class"])
+            suggestions.append(self.create_item(
+                category=kp.ItemCategory.URL,
+                label=job["name"],
+                short_desc=job["fullName"] + " [{}]".format(job_type),
+                target=job["url"],
+                args_hint=kp.ItemArgsHint.FORBIDDEN,
+                hit_hint=kp.ItemHitHint.IGNORE
+            ))
         return suggestions
 
 
