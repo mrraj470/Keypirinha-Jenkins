@@ -105,7 +105,7 @@ class Jenkins(kp.Plugin):
     def _fetch_job_suggestion(self, config: Config):
         suggestions = []
         for folder in config.folders_to_scan:
-            folder = folder.strip("/").replace("/", "/job/")
+            folder = folder.strip("/").replace("/", "/job/").strip()
             url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
             if not folder.strip():
                 url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
