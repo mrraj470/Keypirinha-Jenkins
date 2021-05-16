@@ -3,8 +3,9 @@
 This is Jenkins, a plugin for the
 [Keypirinha](http://keypirinha.com) launcher.
 
-This plugin offers features to search jobs in Jenkins. Supports multi section configuration, so searching more than one
-Jenkins is possible.
+This plugin is meant for (as of now) searching and launching Jenkins jobs in browser as quickly as possible.
+
+Supports multi section configuration, so searching more than one Jenkins is possible.
 
 ## Usage
 
