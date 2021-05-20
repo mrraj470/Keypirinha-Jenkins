@@ -1,5 +1,16 @@
 ## Change Log
 
+### v2.0.0
+
+#### Breaking change:
+
+* Config section is changed, so some old configs will not work. Renamed config `folders_to_scan` to
+  `search_starts_from`.
+
+#### New features:
+
+* Feature to search jobs and navigate on the fly.
+
 ### v1.0.0
 
 #### First official release

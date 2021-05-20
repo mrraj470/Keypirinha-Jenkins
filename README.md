@@ -14,6 +14,10 @@ There is no specific search term for this plugin, because the search term itself
 However, if the search term is not configured, then by default, the items will be catalogued as `
 Jenkins-{{section_name}}` for every config section.
 
+| command                 | function                                                                                   |
+|-------------------------|--------------------------------------------------------------------------------------------|
+|`Jenkins-*:` <br/> (though it can be changed)             | [[Requires configuration](#Configure)] Search and navigate jenkins jobs                    |
+
 ## Download
 
 Download the latest release from [`here`](https://github.com/mrraj470/keypirinha-jenkins/releases).
