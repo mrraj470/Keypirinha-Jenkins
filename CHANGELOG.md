@@ -1,5 +1,12 @@
 ## Change Log
 
+### v2.1.0
+
+#### Features:
+
+* Search and list jenkins agents and labels
+* Search nodes assigned to a label
+
 ### v2.0.1
 
 #### Bug fixes:
