@@ -35,10 +35,33 @@ class JenkinsConfig:
         return self.SECTION + "_" + self.name
 
 
+class AgentConfig:
+    """ Config section as model """
+    DEFAULT_CATALOGUE_PREFIX = "Agent-"
+    SECTION = "agent"
+
+    def __init__(self, name: str, base_url: str, username: str,
+                 api_token: str, searchable_as: str):
+        self.name = name
+        self.base_url = base_url
+        self.username = username
+        self.api_token = api_token
+        self.searchable_as = searchable_as
+
+    def get_catalogue_name(self):
+        if not self.searchable_as.strip():
+            return self.DEFAULT_CATALOGUE_PREFIX + self.name
+        return self.searchable_as
+
+    def get_store_name(self) -> str:
+        return self.SECTION + "_" + self.name
+
+
 class Jenkins(kp.Plugin):
     def __init__(self):
         super().__init__()
-        self.configs = self._create_configs(self.load_settings())
+        self.jenkins_configs = self._create_jenkins_configs(self.load_settings())
+        self.agent_configs = self._create_agents_configs(self.load_settings())
         self.cache = Cache(self.get_package_cache_path(create=True))
 
     def on_start(self):
@@ -46,12 +69,21 @@ class Jenkins(kp.Plugin):
 
     def on_catalog(self):
         suggestions = []
-        for config in self.configs:
+        for config in self.jenkins_configs:
             suggestions.append(self.create_item(
                 category=kp.ItemCategory.KEYWORD,
                 label=config.get_catalogue_name() + ":",
                 short_desc="Search and launch '{}' Jenkins jobs...".format(config.name),
                 target=JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name,
+                args_hint=kp.ItemArgsHint.REQUIRED,
+                hit_hint=kp.ItemHitHint.IGNORE
+            ))
+        for config in self.agent_configs:
+            suggestions.append(self.create_item(
+                category=kp.ItemCategory.KEYWORD,
+                label=config.get_catalogue_name() + ":",
+                short_desc="Search '{}' Jenkins nodes...".format(config.name),
+                target=AgentConfig.DEFAULT_CATALOGUE_PREFIX + config.name,
                 args_hint=kp.ItemArgsHint.REQUIRED,
                 hit_hint=kp.ItemHitHint.IGNORE
             ))
@@ -67,17 +99,30 @@ class Jenkins(kp.Plugin):
 
         if current_target.startswith(JenkinsConfig.DEFAULT_CATALOGUE_PREFIX):
             config = \
-                [config for config in self.configs if
+                [config for config in self.jenkins_configs if
                  JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name == current_target][
                     0]
-            self.set_suggestions(self._get_main_suggestions(config), kp.Match.FUZZY, kp.Sort.SCORE_DESC)
+            self.set_suggestions(self._get_main_job_suggestions(config), kp.Match.FUZZY, kp.Sort.SCORE_DESC)
         elif len(items_chain) > 1 and first_target.startswith(JenkinsConfig.DEFAULT_CATALOGUE_PREFIX):
             config = \
-                [config for config in self.configs if
+                [config for config in self.jenkins_configs if
                  JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name == first_target][
                     0]
-            self.set_suggestions(self._get_sub_suggestions(config, current_item.short_desc()), kp.Match.FUZZY,
+            self.set_suggestions(self._get_sub_job_suggestions(config, current_item.short_desc()), kp.Match.FUZZY,
                                  kp.Sort.SCORE_DESC)
+        elif current_target.startswith(AgentConfig.DEFAULT_CATALOGUE_PREFIX):
+            config = \
+                [config for config in self.agent_configs if
+                 AgentConfig.DEFAULT_CATALOGUE_PREFIX + config.name == current_target][
+                    0]
+            self.set_suggestions(self._get_main_agent_suggestions(config), kp.Match.FUZZY, kp.Sort.SCORE_DESC)
+        elif len(items_chain) > 1 and first_target.startswith(AgentConfig.DEFAULT_CATALOGUE_PREFIX):
+            config = \
+                [config for config in self.agent_configs if
+                 AgentConfig.DEFAULT_CATALOGUE_PREFIX + config.name == first_target][
+                    0]
+            self.set_suggestions(self._get_nodes_of_label_suggestions(current_item.label(), config),
+                                 kp.Match.FUZZY, kp.Sort.SCORE_DESC)
 
     def on_execute(self, item, action):
         kpu.execute_default_action(self, item, action)
@@ -96,7 +141,7 @@ class Jenkins(kp.Plugin):
             self.on_catalog()
             self.log("reloading done...")
 
-    def _create_configs(self, settings):
+    def _create_jenkins_configs(self, settings):
         configs = []
         for section in settings.sections():
             if section.lower().startswith(JenkinsConfig.SECTION + "/"):
@@ -120,7 +165,81 @@ class Jenkins(kp.Plugin):
             ))
         return configs
 
-    def _get_main_suggestions(self, config: JenkinsConfig):
+    def _create_agents_configs(self, settings):
+        configs = []
+        for section in settings.sections():
+            if section.lower().startswith(AgentConfig.SECTION + "/"):
+                section_name = section[len(AgentConfig.SECTION) + 1:].strip()
+            else:
+                continue
+            if not len(section_name):
+                self.warn("Ignoring empty agents section")
+                continue
+            if not settings.get("jenkins_base_url", section=section, fallback=""):
+                self.warn("Section '{}' doesn't have 'jenkins_base_url' defined.".format(section))
+                continue
+            configs.append(AgentConfig(
+                section_name,
+                settings.get("jenkins_base_url", section=section, fallback="").strip("/"),
+                settings.get("username", section=section, fallback="").strip(),
+                settings.get("api_token", section=section, fallback="").strip(),
+                settings.get("searchable_as", section=section, fallback="").strip()
+            ))
+        return configs
+
+    def _get_main_agent_suggestions(self, config: AgentConfig):
+        url = "{}/computer/api/json?tree=computer[offline,temporarilyOffline,displayName,assignedLabels[name],idle]".format(
+            config.base_url)
+        nodes = http_get_json(url, config.username, config.api_token)["computer"]
+        return self._create_agent_items(nodes, config)
+
+    def _create_agent_items(self, nodes: list, config: AgentConfig):
+        suggestions = []
+        labels = []
+        for node in nodes:
+            labels.extend(_get_labels(node))
+            target = "{}/computer/{}".format(config.base_url,
+                                             "(master)" if node["displayName"] == "master" else node["displayName"])
+            short_desc = "Slave" + ", Idle" if node["idle"] else "Slave"
+            short_desc += ", Offline" if node["offline"] else ""
+            short_desc += ", TemporarilyOffline" if node["temporarilyOffline"] else ""
+            suggestions.append(self.create_item(
+                category=kp.ItemCategory.URL,
+                label=node["displayName"],
+                short_desc=short_desc,
+                target=target,
+                args_hint=kp.ItemArgsHint.FORBIDDEN,
+                hit_hint=kp.ItemHitHint.IGNORE
+            ))
+        for label in labels:
+            suggestions.append(self.create_item(
+                category=kp.ItemCategory.URL,
+                label=label,
+                short_desc="Label",
+                target="{}/label/{}".format(config.base_url, label),
+                args_hint=kp.ItemArgsHint.REQUIRED,
+                hit_hint=kp.ItemHitHint.IGNORE
+            ))
+        return suggestions
+
+    def _get_nodes_of_label_suggestions(self, label: str, config: AgentConfig):
+        suggestions = []
+        url = "{}/label/{}/api/json?tree=nodes[nodeName]".format(config.base_url, label)
+        nodes = http_get_json(url, config.username, config.api_token)["nodes"]
+        for node in nodes:
+            target = "{}/computer/{}".format(config.base_url,
+                                             "(master)" if node["nodeName"] == "master" else node["nodeName"])
+            suggestions.append(self.create_item(
+                category=kp.ItemCategory.URL,
+                label=node["nodeName"],
+                short_desc="Slave",
+                target=target,
+                args_hint=kp.ItemArgsHint.FORBIDDEN,
+                hit_hint=kp.ItemHitHint.IGNORE
+            ))
+        return suggestions
+
+    def _get_main_job_suggestions(self, config: JenkinsConfig):
         jobs_response = []
         if self.cache.exists(config.get_store_name() + "_init", config.get_store_name()):
             # loading from local file cache
@@ -139,7 +258,7 @@ class Jenkins(kp.Plugin):
         suggestions = self._create_job_items(jobs_response)
         return suggestions
 
-    def _get_sub_suggestions(self, config: JenkinsConfig, folder: str):
+    def _get_sub_job_suggestions(self, config: JenkinsConfig, folder: str):
         folder = folder.strip("/").replace("/", "/job/").strip()
         cache_name = str(hash(folder))
         if self.cache.exists(cache_name, config.get_store_name()):
@@ -187,3 +306,10 @@ def http_get_json(url: str, username: str, token: str):
         request.add_header("Authorization", "Basic {}".format(base64string.decode("ascii")))
     response = urllib.request.urlopen(request)
     return json.loads(response.read())
+
+
+def _get_labels(node: dict):
+    labels = []
+    for assigned_label in node["assignedLabels"]:
+        labels.append(assigned_label["name"])
+    return labels
