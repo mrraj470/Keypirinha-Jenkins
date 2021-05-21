@@ -4,6 +4,7 @@ This is Jenkins, a plugin for the
 [Keypirinha](http://keypirinha.com) launcher.
 
 This plugin is meant for (as of now) searching and launching Jenkins jobs in browser as quickly as possible.
+From `v2.1.0`, it supports searching jenkins agents and labels.
 
 Supports multi section configuration, so searching more than one Jenkins is possible.
 
@@ -17,6 +18,7 @@ Jenkins-{{section_name}}` for every config section.
 | command                 | function                                                                                   |
 |-------------------------|--------------------------------------------------------------------------------------------|
 |`Jenkins-*:` <br/> (though it can be changed)             | [[Requires configuration](#Configure)] Search and navigate jenkins jobs                    |
+|`Agent-*:` <br/> (though it can be changed)             | [[Requires configuration](#Configure)] Search and navigate jenkins agents                     |
 
 ## Download
 
