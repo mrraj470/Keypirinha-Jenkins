@@ -31,6 +31,9 @@ class JenkinsConfig:
             return self.DEFAULT_CATALOGUE_PREFIX + self.name
         return self.searchable_as
 
+    def get_store_name(self) -> str:
+        return self.SECTION + "_" + self.name
+
 
 class Jenkins(kp.Plugin):
     def __init__(self):
@@ -64,12 +67,14 @@ class Jenkins(kp.Plugin):
 
         if current_target.startswith(JenkinsConfig.DEFAULT_CATALOGUE_PREFIX):
             config = \
-                [config for config in self.configs if JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name == current_target][
+                [config for config in self.configs if
+                 JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name == current_target][
                     0]
             self.set_suggestions(self._get_main_suggestions(config), kp.Match.FUZZY, kp.Sort.SCORE_DESC)
         elif len(items_chain) > 1 and first_target.startswith(JenkinsConfig.DEFAULT_CATALOGUE_PREFIX):
             config = \
-                [config for config in self.configs if JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name == first_target][
+                [config for config in self.configs if
+                 JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name == first_target][
                     0]
             self.set_suggestions(self._get_sub_suggestions(config, current_item.short_desc()), kp.Match.FUZZY,
                                  kp.Sort.SCORE_DESC)
@@ -117,9 +122,9 @@ class Jenkins(kp.Plugin):
 
     def _get_main_suggestions(self, config: JenkinsConfig):
         jobs_response = []
-        if self.cache.exists(config.name):
+        if self.cache.exists(config.get_store_name() + "_init", config.get_store_name()):
             # using cached json response
-            jobs_response = self.cache.fetch_object(config.name)
+            jobs_response = self.cache.fetch_object(config.get_store_name() + "_init", config.get_store_name())
         else:
             for folder in config.search_starts_from:
                 folder = folder.strip("/").replace("/", "/job/").strip()
@@ -131,7 +136,7 @@ class Jenkins(kp.Plugin):
         suggestions = self._create_job_items(jobs_response)
         if config.enable_cache:
             # saving response in plugin cache dir
-            self.cache.save_object(jobs_response, config.name)
+            self.cache.save_object(config.get_store_name() + "_init", jobs_response, config.get_store_name())
         return suggestions
 
     def _get_sub_suggestions(self, config: JenkinsConfig, folder: str):
