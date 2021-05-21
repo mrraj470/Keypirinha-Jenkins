@@ -123,7 +123,7 @@ class Jenkins(kp.Plugin):
     def _get_main_suggestions(self, config: JenkinsConfig):
         jobs_response = []
         if self.cache.exists(config.get_store_name() + "_init", config.get_store_name()):
-            # using cached json response
+            # loading from local file cache
             jobs_response = self.cache.fetch_object(config.get_store_name() + "_init", config.get_store_name())
         else:
             for folder in config.search_starts_from:
@@ -133,18 +133,26 @@ class Jenkins(kp.Plugin):
                     url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
                 jobs = http_get_json(url, config.username, config.api_token)["jobs"]
                 jobs_response.extend(jobs)
+            if config.enable_cache:
+                # saving response in local file cache
+                self.cache.save_object(config.get_store_name() + "_init", jobs_response, config.get_store_name())
         suggestions = self._create_job_items(jobs_response)
-        if config.enable_cache:
-            # saving response in plugin cache dir
-            self.cache.save_object(config.get_store_name() + "_init", jobs_response, config.get_store_name())
         return suggestions
 
     def _get_sub_suggestions(self, config: JenkinsConfig, folder: str):
         folder = folder.strip("/").replace("/", "/job/").strip()
-        url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
-        if not folder.strip():
-            url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
-        jobs = http_get_json(url, config.username, config.api_token)["jobs"]
+        cache_name = str(hash(folder))
+        if self.cache.exists(cache_name, config.get_store_name()):
+            # loading from local file cache
+            jobs = self.cache.fetch_object(cache_name, config.get_store_name())
+        else:
+            url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
+            if not folder.strip():
+                url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
+            jobs = http_get_json(url, config.username, config.api_token)["jobs"]
+            if config.enable_cache:
+                # saving response in local file cache
+                self.cache.save_object(cache_name, jobs, config.get_store_name())
         return self._create_job_items(jobs)
 
     def _create_job_items(self, jobs: list):
