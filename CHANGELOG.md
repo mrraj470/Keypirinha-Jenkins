@@ -1,5 +1,11 @@
 ## Change Log
 
+### v2.0.1
+
+#### Bug fixes:
+
+* Fixed issues of not caching some jobs
+
 ### v2.0.0
 
 #### Breaking change:
