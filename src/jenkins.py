@@ -11,7 +11,7 @@ import keypirinha_util as kpu
 from .helper import Cache
 
 
-class Config:
+class JenkinsConfig:
     """ Config section as model """
     DEFAULT_CATALOGUE_PREFIX = "Jenkins-"
     SECTION = "jenkins"
@@ -48,7 +48,7 @@ class Jenkins(kp.Plugin):
                 category=kp.ItemCategory.KEYWORD,
                 label=config.get_catalogue_name() + ":",
                 short_desc="Search and launch '{}' Jenkins jobs...".format(config.name),
-                target=Config.DEFAULT_CATALOGUE_PREFIX + config.name,
+                target=JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name,
                 args_hint=kp.ItemArgsHint.REQUIRED,
                 hit_hint=kp.ItemHitHint.IGNORE
             ))
@@ -62,14 +62,14 @@ class Jenkins(kp.Plugin):
         current_target = current_item.target()
         first_target = first_item.target()
 
-        if current_target.startswith(Config.DEFAULT_CATALOGUE_PREFIX):
+        if current_target.startswith(JenkinsConfig.DEFAULT_CATALOGUE_PREFIX):
             config = \
-                [config for config in self.configs if Config.DEFAULT_CATALOGUE_PREFIX + config.name == current_target][
+                [config for config in self.configs if JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name == current_target][
                     0]
             self.set_suggestions(self._get_main_suggestions(config), kp.Match.FUZZY, kp.Sort.SCORE_DESC)
-        elif len(items_chain) > 1 and first_target.startswith(Config.DEFAULT_CATALOGUE_PREFIX):
+        elif len(items_chain) > 1 and first_target.startswith(JenkinsConfig.DEFAULT_CATALOGUE_PREFIX):
             config = \
-                [config for config in self.configs if Config.DEFAULT_CATALOGUE_PREFIX + config.name == first_target][
+                [config for config in self.configs if JenkinsConfig.DEFAULT_CATALOGUE_PREFIX + config.name == first_target][
                     0]
             self.set_suggestions(self._get_sub_suggestions(config, current_item.short_desc()), kp.Match.FUZZY,
                                  kp.Sort.SCORE_DESC)
@@ -94,8 +94,8 @@ class Jenkins(kp.Plugin):
     def _create_configs(self, settings):
         configs = []
         for section in settings.sections():
-            if section.lower().startswith(Config.SECTION + "/"):
-                section_name = section[len(Config.SECTION) + 1:].strip()
+            if section.lower().startswith(JenkinsConfig.SECTION + "/"):
+                section_name = section[len(JenkinsConfig.SECTION) + 1:].strip()
             else:
                 continue
             if not len(section_name):
@@ -104,7 +104,7 @@ class Jenkins(kp.Plugin):
             if not settings.get("jenkins_base_url", section=section, fallback=""):
                 self.warn("Section '{}' doesn't have 'jenkins_base_url' defined.".format(section))
                 continue
-            configs.append(Config(
+            configs.append(JenkinsConfig(
                 section_name,
                 settings.get("jenkins_base_url", section=section, fallback="").strip("/"),
                 settings.get("search_starts_from", section=section, fallback="/").split(","),
@@ -115,7 +115,7 @@ class Jenkins(kp.Plugin):
             ))
         return configs
 
-    def _get_main_suggestions(self, config: Config):
+    def _get_main_suggestions(self, config: JenkinsConfig):
         jobs_response = []
         if self.cache.exists(config.name):
             # using cached json response
@@ -134,7 +134,7 @@ class Jenkins(kp.Plugin):
             self.cache.save_object(jobs_response, config.name)
         return suggestions
 
-    def _get_sub_suggestions(self, config: Config, folder: str):
+    def _get_sub_suggestions(self, config: JenkinsConfig, folder: str):
         folder = folder.strip("/").replace("/", "/job/").strip()
         url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
         if not folder.strip():
