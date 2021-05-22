@@ -26,7 +26,14 @@ Download the latest release from [`here`](https://github.com/mrraj470/keypirinha
 
 ## Install
 
-Once the `Jenkins.keypirinha-package` file is installed, move it to the `InstalledPackage` folder located at:
+### Using [package control](https://github.com/ueffel/Keypirinha-PackageControl)
+
+* Type `Install Package`, and click enter.
+* Type `Keypirinha-Jenkins`, choose one named `mrraj470`, and click enter.
+
+### Manual Installation
+
+Once the `Jenkins.keypirinha-package` file is downloaded, move it to the `InstalledPackage` folder located at:
 
 * `Keypirinha\portable\Profile\InstalledPackages` in **Portable mode**
 * **Or** `%APPDATA%\Keypirinha\InstalledPackages` in **Installed mode** (the final path would look like
