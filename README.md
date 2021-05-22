@@ -10,15 +10,12 @@ Supports multi section configuration, so searching more than one Jenkins is poss
 
 ## Usage
 
-There is no specific search term for this plugin, because the search term itself is configurable.
-
-However, if the search term is not configured, then by default, the items will be catalogued as `
-Jenkins-{{section_name}}` for every config section.
+The command name is itself is configurable. However, if not configured, it will be named as follows.
 
 | command                 | function                                                                                   |
 |-------------------------|--------------------------------------------------------------------------------------------|
-|`Jenkins-*:` <br/> (though it can be changed)             | [[Requires configuration](#Configure)] Search and navigate jenkins jobs                    |
-|`Agent-*:` <br/> (though it can be changed)             | [[Requires configuration](#Configure)] Search and navigate jenkins agents                     |
+|`Jenkins-<section_name>:` <br/> (though it can be changed)             | [[Requires configuration](#Configure)] Search and navigate jenkins jobs                    |
+|`Agent-<section_name>:` <br/> (though it can be changed)             | [[Requires configuration](#Configure)] Search and navigate jenkins agents                     |
 
 ## Download
 
