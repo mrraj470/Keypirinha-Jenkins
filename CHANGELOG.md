@@ -1,5 +1,11 @@
 ## Change Log
 
+### v2.1.1
+
+#### Changes:
+
+* Fix documentation
+
 ### v2.1.0
 
 #### Features:
