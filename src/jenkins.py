@@ -58,14 +58,18 @@ class AgentConfig:
 
 
 class Jenkins(kp.Plugin):
+    ITEMCAT_JOB = kp.ItemCategory.USER_BASE + 1
+    ITEMCAT_NODE = kp.ItemCategory.USER_BASE + 2
+
     def __init__(self):
         super().__init__()
         self.jenkins_configs = self._create_jenkins_configs(self.load_settings())
-        self.agent_configs = self._create_agents_configs(self.load_settings())
+        self.agent_configs = self._create_agent_configs(self.load_settings())
         self.cache = Cache(self.get_package_cache_path(create=True))
 
     def on_start(self):
         self.cache.clear()
+        self.set_actions(self.ITEMCAT_JOB, self._get_job_actions())
 
     def on_catalog(self):
         suggestions = []
@@ -141,6 +145,29 @@ class Jenkins(kp.Plugin):
             self.on_catalog()
             self.log("reloading done...")
 
+    def _get_job_actions(self) -> list:
+        actions = [
+            self.create_action(
+                name="open_url",
+                label="Open",
+                short_desc="Open URL",
+                data_bag=""
+            ),
+            self.create_action(
+                name="copy_url",
+                label="Copy Url",
+                short_desc="Copy URL to clipboard",
+                data_bag=""
+            ),
+            self.create_action(
+                name="open_in_private",
+                label="Open in Private mode",
+                short_desc="Open URL in private mode",
+                data_bag=""
+            )
+        ]
+        return actions
+
     def _create_jenkins_configs(self, settings):
         configs = []
         for section in settings.sections():
@@ -165,7 +192,7 @@ class Jenkins(kp.Plugin):
             ))
         return configs
 
-    def _create_agents_configs(self, settings):
+    def _create_agent_configs(self, settings):
         configs = []
         for section in settings.sections():
             if section.lower().startswith(AgentConfig.SECTION + "/"):
@@ -289,14 +316,18 @@ class Jenkins(kp.Plugin):
                 ))
             else:
                 suggestions.append(self.create_item(
-                    category=kp.ItemCategory.URL,
-                    label=job["name"] + " (Folder)",
+                    category=self.ITEMCAT_JOB,
+                    label=job["name"],
                     short_desc=job["fullName"],
                     target=job["url"],
                     args_hint=kp.ItemArgsHint.REQUIRED,
-                    hit_hint=kp.ItemHitHint.IGNORE
+                    hit_hint=kp.ItemHitHint.IGNORE,
+                    icon_handle=self._get_icon_folder()
                 ))
         return suggestions
+
+    def _get_icon_folder(self):
+        return self.load_icon("res://jenkins/icons/folder.png")
 
 
 def http_get_json(url: str, username: str, token: str):
