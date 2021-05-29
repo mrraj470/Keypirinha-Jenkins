@@ -70,6 +70,7 @@ class Jenkins(kp.Plugin):
     def on_start(self):
         self.cache.clear()
         self.set_actions(self.ITEMCAT_JOB, self._get_job_actions())
+        self.set_actions(self.ITEMCAT_NODE, self._get_node_actions())
 
     def on_catalog(self):
         suggestions = []
@@ -129,7 +130,18 @@ class Jenkins(kp.Plugin):
                                  kp.Match.FUZZY, kp.Sort.SCORE_DESC)
 
     def on_execute(self, item, action):
-        kpu.execute_default_action(self, item, action)
+        if item.category() in [self.ITEMCAT_JOB, self.ITEMCAT_NODE]:
+            if action and action.name() in ["open_url", "copy_url", "open_in_private"]:
+                if action.name() == "open_url":
+                    kpu.web_browser_command(private_mode=None, new_window=None, url=item.target(), execute=True)
+                elif action.name() == "copy_url":
+                    kpu.set_clipboard(item.target())
+                elif action.name() == "open_in_private":
+                    kpu.web_browser_command(private_mode=True, new_window=None, url=item.target(), execute=True)
+            else:
+                kpu.web_browser_command(private_mode=None, new_window=None, url=item.target(), execute=True)
+        else:
+            kpu.execute_default_action(self, item, action)
 
     def on_activated(self):
         pass
@@ -144,6 +156,9 @@ class Jenkins(kp.Plugin):
             self.on_start()
             self.on_catalog()
             self.log("reloading done...")
+
+    def _get_node_actions(self) -> list:
+        return self._get_job_actions()
 
     def _get_job_actions(self) -> list:
         actions = [
@@ -231,12 +246,13 @@ class Jenkins(kp.Plugin):
             short_desc += ", Offline" if node["offline"] else ""
             short_desc += ", TemporarilyOffline" if node["temporarilyOffline"] else ""
             suggestions.append(self.create_item(
-                category=kp.ItemCategory.URL,
+                category=self.ITEMCAT_NODE,
                 label=node["displayName"],
                 short_desc=short_desc,
                 target=target,
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
-                hit_hint=kp.ItemHitHint.IGNORE
+                hit_hint=kp.ItemHitHint.IGNORE,
+                icon_handle=self._get_icon_computer()
             ))
         for label in labels:
             suggestions.append(self.create_item(
@@ -257,12 +273,13 @@ class Jenkins(kp.Plugin):
             target = "{}/computer/{}".format(config.base_url,
                                              "(master)" if node["nodeName"] == "master" else node["nodeName"])
             suggestions.append(self.create_item(
-                category=kp.ItemCategory.URL,
+                category=self.ITEMCAT_NODE,
                 label=node["nodeName"],
                 short_desc="Slave",
                 target=target,
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
-                hit_hint=kp.ItemHitHint.IGNORE
+                hit_hint=kp.ItemHitHint.IGNORE,
+                icon_handle=self._get_icon_computer()
             ))
         return suggestions
 
@@ -328,6 +345,9 @@ class Jenkins(kp.Plugin):
 
     def _get_icon_folder(self):
         return self.load_icon("res://jenkins/icons/folder.png")
+
+    def _get_icon_computer(self):
+        return self.load_icon("res://jenkins/icons/computer.png")
 
 
 def http_get_json(url: str, username: str, token: str):
