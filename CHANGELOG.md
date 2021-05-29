@@ -1,5 +1,11 @@
 ## Change Log
 
+### v2.2.1
+
+#### Features:
+
+* Added icons (for job folders, agent nodes)
+
 ### v2.1.1
 
 #### Changes:
