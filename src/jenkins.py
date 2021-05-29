@@ -238,6 +238,8 @@ class Jenkins(kp.Plugin):
     def _create_agent_items(self, nodes: list, config: AgentConfig):
         suggestions = []
         labels = []
+        icon_computer = self.load_icon("res://jenkins/icons/computer.png")
+        icon_label = self.load_icon("res://jenkins/icons/label.png")
         for node in nodes:
             labels.extend(_get_labels(node))
             target = "{}/computer/{}".format(config.base_url,
@@ -252,21 +254,23 @@ class Jenkins(kp.Plugin):
                 target=target,
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
                 hit_hint=kp.ItemHitHint.IGNORE,
-                icon_handle=self._get_icon_computer()
+                icon_handle=icon_computer
             ))
         for label in labels:
             suggestions.append(self.create_item(
-                category=kp.ItemCategory.URL,
+                category=self.ITEMCAT_NODE,
                 label=label,
                 short_desc="Label",
                 target="{}/label/{}".format(config.base_url, label),
                 args_hint=kp.ItemArgsHint.REQUIRED,
-                hit_hint=kp.ItemHitHint.IGNORE
+                hit_hint=kp.ItemHitHint.IGNORE,
+                icon_handle=icon_label
             ))
         return suggestions
 
     def _get_nodes_of_label_suggestions(self, label: str, config: AgentConfig):
         suggestions = []
+        icon_computer = self.load_icon("res://jenkins/icons/computer.png")
         url = "{}/label/{}/api/json?tree=nodes[nodeName]".format(config.base_url, label)
         nodes = http_get_json(url, config.username, config.api_token)["nodes"]
         for node in nodes:
@@ -279,7 +283,7 @@ class Jenkins(kp.Plugin):
                 target=target,
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
                 hit_hint=kp.ItemHitHint.IGNORE,
-                icon_handle=self._get_icon_computer()
+                icon_handle=icon_computer
             ))
         return suggestions
 
@@ -320,6 +324,7 @@ class Jenkins(kp.Plugin):
 
     def _create_job_items(self, jobs: list):
         suggestions = []
+        icon_folder = self.load_icon("res://jenkins/icons/folder.png")
         for job in jobs:
             job_type = re.sub(r".*\.", "", job["_class"])
             if job_type in ["FreeStyleProject", "WorkflowJob"]:
@@ -339,15 +344,9 @@ class Jenkins(kp.Plugin):
                     target=job["url"],
                     args_hint=kp.ItemArgsHint.REQUIRED,
                     hit_hint=kp.ItemHitHint.IGNORE,
-                    icon_handle=self._get_icon_folder()
+                    icon_handle=icon_folder
                 ))
         return suggestions
-
-    def _get_icon_folder(self):
-        return self.load_icon("res://jenkins/icons/folder.png")
-
-    def _get_icon_computer(self):
-        return self.load_icon("res://jenkins/icons/computer.png")
 
 
 def http_get_json(url: str, username: str, token: str):
