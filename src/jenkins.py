@@ -241,12 +241,10 @@ class Jenkins(kp.Plugin):
         icon_computer = self.load_icon("res://jenkins/icons/computer.png")
         icon_label = self.load_icon("res://jenkins/icons/label.png")
         for node in nodes:
-            labels.extend(_get_labels(node))
+            labels.extend(get_node_labels(node))
             target = "{}/computer/{}".format(config.base_url,
-                                             "(master)" if node["displayName"] == "master" else node["displayName"])
-            short_desc = "Slave" + ", Idle" if node["idle"] else "Slave"
-            short_desc += ", Offline" if node["offline"] else ""
-            short_desc += ", TemporarilyOffline" if node["temporarilyOffline"] else ""
+                                             node["displayName"] if is_slave(node) else "(master)")
+            short_desc = get_short_desc(node)
             suggestions.append(self.create_item(
                 category=self.ITEMCAT_NODE,
                 label=node["displayName"],
@@ -274,12 +272,14 @@ class Jenkins(kp.Plugin):
         url = "{}/label/{}/api/json?tree=nodes[nodeName]".format(config.base_url, label)
         nodes = http_get_json(url, config.username, config.api_token)["nodes"]
         for node in nodes:
+            node_name = "master" if not node["nodeName"] else node["nodeName"]
             target = "{}/computer/{}".format(config.base_url,
-                                             "(master)" if node["nodeName"] == "master" else node["nodeName"])
+                                             "(master)" if node["nodeName"] == "" else node["nodeName"])
+            short_desc = "Master" if not node["nodeName"] else "Slave"
             suggestions.append(self.create_item(
                 category=self.ITEMCAT_NODE,
-                label=node["nodeName"],
-                short_desc="Slave",
+                label=node_name,
+                short_desc=short_desc,
                 target=target,
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
                 hit_hint=kp.ItemHitHint.IGNORE,
@@ -358,8 +358,22 @@ def http_get_json(url: str, username: str, token: str):
     return json.loads(response.read())
 
 
-def _get_labels(node: dict):
+def is_slave(node: dict):
+    if node["_class"].endswith("MasterComputer"):
+        return False
+    return True
+
+
+def get_node_labels(node: dict):
     labels = []
     for assigned_label in node["assignedLabels"]:
         labels.append(assigned_label["name"])
     return labels
+
+
+def get_short_desc(node: dict):
+    short_desc = "Slave" if is_slave(node) else "Master"
+    short_desc += ", Idle" if node["idle"] else "Slave"
+    short_desc += ", Offline" if node["offline"] else ""
+    short_desc += ", TemporarilyOffline" if node["temporarilyOffline"] else ""
+    return short_desc
