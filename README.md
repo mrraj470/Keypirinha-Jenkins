@@ -48,4 +48,5 @@ This package is distributed under the terms of the MIT license.
 
 ## Icon credits
 
-* [Folder](src/icons/folder.png) icon by [icons8.com](https://icons8.com/icon/41649/folder)
+* [Folder](https://icons8.com/icon/41649/folder) icon by [Icons8](https://icons8.com)
+* [Computer](https://icons8.com/icon/fEvszKDe3hzp/computer) icon by [Icons8](https://icons8.com)
