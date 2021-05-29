@@ -275,7 +275,7 @@ class Jenkins(kp.Plugin):
             node_name = "master" if not node["nodeName"] else node["nodeName"]
             target = "{}/computer/{}".format(config.base_url,
                                              "(master)" if node["nodeName"] == "" else node["nodeName"])
-            short_desc = "Master" if not node["nodeName"] else "Slave"
+            short_desc = "**** MASTER ****" if not node["nodeName"] else "Slave"
             suggestions.append(self.create_item(
                 category=self.ITEMCAT_NODE,
                 label=node_name,
@@ -372,7 +372,7 @@ def get_node_labels(node: dict):
 
 
 def get_short_desc(node: dict):
-    short_desc = "Slave" if is_slave(node) else "Master"
+    short_desc = "Slave" if is_slave(node) else "**** MASTER ****"
     short_desc += ", Idle" if node["idle"] else "Slave"
     short_desc += ", Offline" if node["offline"] else ""
     short_desc += ", TemporarilyOffline" if node["temporarilyOffline"] else ""
