@@ -1,5 +1,12 @@
 ## Change Log
 
+### v2.3.0
+
+#### Features:
+
+* Added icons (for agent labels)
+* Fix bug in master node/label suggestion
+
 ### v2.2.1
 
 #### Features:
