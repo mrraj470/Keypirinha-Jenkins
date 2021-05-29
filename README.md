@@ -17,9 +17,13 @@ The command name is itself is configurable. However, if not configured, it will 
 |`Jenkins-<section_name>:` <br/> (though it can be changed)             | [[Requires configuration](#Configure)] Search and navigate jenkins jobs                    |
 |`Agent-<section_name>:` <br/> (though it can be changed)             | [[Requires configuration](#Configure)] Search and navigate jenkins agents                     |
 
+#### Sample (with [this](sample_config_file.ini) config):
+
+![Alt Text](usage.gif)
+
 ## Download
 
-Download the latest release from [`here`](https://github.com/mrraj470/keypirinha-jenkins/releases).
+Download the latest release from [here](https://github.com/mrraj470/keypirinha-jenkins/releases).
 
 ## Install
 
@@ -39,8 +43,7 @@ Once the `Jenkins.keypirinha-package` file is downloaded, move it to the `Instal
 ## Configure
 
 Please refer the config file for configuration documentation. Also see
-this [`sample config file`](https://github.com/mrraj470/Keypirinha-Jenkins/blob/master/sample_config_file.ini) for
-reference.
+this [`sample config file`](sample_config_file.ini) for reference.
 
 ## License
 
