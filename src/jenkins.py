@@ -58,7 +58,7 @@ class AgentConfig:
 
 
 class Jenkins(kp.Plugin):
-    ITEMCAT_JOB = kp.ItemCategory.USER_BASE + 1
+    ITEMCAT_JOB_FOLDER = kp.ItemCategory.USER_BASE + 1
     ITEMCAT_NODE = kp.ItemCategory.USER_BASE + 2
 
     def __init__(self):
@@ -70,7 +70,7 @@ class Jenkins(kp.Plugin):
     def on_start(self):
         self._load_icons()
         self.cache.clear()
-        self.set_actions(self.ITEMCAT_JOB, self._get_job_actions())
+        # self.set_actions(self.ITEMCAT_JOB_FOLDER, self._get_job_actions())
         self.set_actions(self.ITEMCAT_NODE, self._get_node_actions())
 
     def on_catalog(self):
@@ -131,7 +131,7 @@ class Jenkins(kp.Plugin):
                                  kp.Match.FUZZY, kp.Sort.SCORE_DESC)
 
     def on_execute(self, item, action):
-        if item.category() in [self.ITEMCAT_JOB, self.ITEMCAT_NODE]:
+        if item.category() in [self.ITEMCAT_JOB_FOLDER, self.ITEMCAT_NODE]:
             if action and action.name() in ["open_url", "copy_url", "open_in_private"]:
                 if action.name() == "open_url":
                     kpu.web_browser_command(private_mode=None, new_window=None, url=item.target(), execute=True)
@@ -296,11 +296,12 @@ class Jenkins(kp.Plugin):
             # loading from local file cache
             jobs_response = self.cache.fetch_object(config.get_store_name() + "_init", config.get_store_name())
         else:
-            for folder in config.search_starts_from:
-                folder = folder.strip("/").replace("/", "/job/").strip()
-                url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
-                if not folder.strip():
-                    url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
+            for folder_with_depth in config.search_starts_from:
+                folder_with_depth = folder_with_depth.strip("/")
+
+                folder = folder_with_depth.split(":")[0]
+                depth = folder_with_depth.split(":")[1] if len(folder_with_depth.split(":")) == 2 else 1
+                url = get_api_url(config.base_url, folder, int(depth))
                 jobs = http_get_json(url, config.username, config.api_token)["jobs"]
                 jobs_response.extend(jobs)
             if config.enable_cache:
@@ -319,7 +320,10 @@ class Jenkins(kp.Plugin):
             url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
             if not folder.strip():
                 url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
-            jobs = http_get_json(url, config.username, config.api_token)["jobs"]
+            response = http_get_json(url, config.username, config.api_token)
+            jobs = []
+            if "jobs" in response:
+                jobs = response.get("jobs")
             if config.enable_cache:
                 # saving response in local file cache
                 self.cache.save_object(cache_name, jobs, config.get_store_name())
@@ -340,7 +344,7 @@ class Jenkins(kp.Plugin):
                 ))
             else:
                 suggestions.append(self.create_item(
-                    category=self.ITEMCAT_JOB,
+                    category=self.ITEMCAT_JOB_FOLDER,
                     label=job["name"],
                     short_desc=job["fullName"],
                     target=job["url"],
@@ -348,6 +352,8 @@ class Jenkins(kp.Plugin):
                     hit_hint=kp.ItemHitHint.IGNORE,
                     icon_handle=self.icon_folder
                 ))
+            if "jobs" in job and job["jobs"]:
+                suggestions.extend(self._create_job_items(job["jobs"]))
         return suggestions
 
 
@@ -358,6 +364,31 @@ def http_get_json(url: str, username: str, token: str):
         request.add_header("Authorization", "Basic {}".format(base64string.decode("ascii")))
     response = urllib.request.urlopen(request)
     return json.loads(response.read())
+
+
+def get_api_url(base_url: str, folder: str, depth: int):
+    if not folder.strip():
+        url_path = "{}/api/json".format(base_url)
+    else:
+        folder = folder.strip("/").replace("/", "/job/").strip()
+        url_path = "{}/job/{}/api/json".format(base_url, folder)
+
+    return url_path + "?" + construct_depth_query(depth)
+
+
+def construct_depth_query(depth: int):
+    opener = "jobs[name,fullName,url"
+    closer = "]"
+
+    query_opener = "tree="
+    query_closer = ""
+    for n in range(depth):
+        query_closer += closer
+        if n == 0:
+            query_opener += opener
+        else:
+            query_opener += "," + opener
+    return query_opener + query_closer
 
 
 def is_slave(node: dict):
