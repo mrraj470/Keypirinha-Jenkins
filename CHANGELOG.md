@@ -1,5 +1,11 @@
 ## Change Log
 
+### v2.4.0
+
+#### Features:
+
+* Recursive folder search (for `n` levels)
+
 ### v2.3.0
 
 #### Features:
