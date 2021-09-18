@@ -66,6 +66,7 @@ class Jenkins(kp.Plugin):
         self.jenkins_configs = self._create_jenkins_configs(self.load_settings())
         self.agent_configs = self._create_agent_configs(self.load_settings())
         self.cache = Cache(self.get_package_cache_path(create=True))
+        self._set_debug_mode(self.load_settings())
 
     def on_start(self):
         self._load_icons()
@@ -158,6 +159,14 @@ class Jenkins(kp.Plugin):
             self.on_catalog()
             self.log("reloading done...")
 
+    def _set_debug_mode(self, settings):
+        debug_mode = settings.get_bool("debug_mode", section="main", fallback=False)
+        self.log("Debug mode: " + str(debug_mode))
+        if debug_mode:
+            self._debug = True
+        else:
+            self._debug = False
+
     def _load_icons(self):
         self.icon_computer = self.load_icon("res://jenkins/icons/computer.png")
         self.icon_label = self.load_icon("res://jenkins/icons/label.png")
@@ -238,7 +247,7 @@ class Jenkins(kp.Plugin):
     def _get_main_agent_suggestions(self, config: AgentConfig):
         url = "{}/computer/api/json?tree=computer[offline,temporarilyOffline,displayName,assignedLabels[name],idle]".format(
             config.base_url)
-        nodes = http_get_json(url, config.username, config.api_token)["computer"]
+        nodes = self._http_get_json(url, config.username, config.api_token)["computer"]
         return self._create_agent_items(nodes, config)
 
     def _create_agent_items(self, nodes: list, config: AgentConfig):
@@ -273,7 +282,7 @@ class Jenkins(kp.Plugin):
     def _get_nodes_of_label_suggestions(self, label: str, config: AgentConfig):
         suggestions = []
         url = "{}/label/{}/api/json?tree=nodes[nodeName]".format(config.base_url, label)
-        nodes = http_get_json(url, config.username, config.api_token)["nodes"]
+        nodes = self._http_get_json(url, config.username, config.api_token)["nodes"]
         for node in nodes:
             node_name = "master" if not node["nodeName"] else node["nodeName"]
             target = "{}/computer/{}".format(config.base_url,
@@ -302,7 +311,7 @@ class Jenkins(kp.Plugin):
                 folder = folder_with_depth.split(":")[0]
                 depth = folder_with_depth.split(":")[1] if len(folder_with_depth.split(":")) == 2 else 1
                 url = get_api_url(config.base_url, folder, int(depth))
-                jobs = http_get_json(url, config.username, config.api_token)["jobs"]
+                jobs = self._http_get_json(url, config.username, config.api_token)["jobs"]
                 jobs_response.extend(jobs)
             if config.enable_cache:
                 # saving response in local file cache
@@ -320,7 +329,7 @@ class Jenkins(kp.Plugin):
             url = "{}/job/{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url, folder)
             if not folder.strip():
                 url = "{}/api/json?tree=jobs[name,fullName,url]".format(config.base_url)
-            response = http_get_json(url, config.username, config.api_token)
+            response = self._http_get_json(url, config.username, config.api_token)
             jobs = []
             if "jobs" in response:
                 jobs = response.get("jobs")
@@ -356,14 +365,18 @@ class Jenkins(kp.Plugin):
                 suggestions.extend(self._create_job_items(job["jobs"]))
         return suggestions
 
-
-def http_get_json(url: str, username: str, token: str):
-    request = urllib.request.Request(url)
-    if username.strip() and token.strip():
-        base64string = base64.b64encode((username + ":" + token).encode("ascii"))
-        request.add_header("Authorization", "Basic {}".format(base64string.decode("ascii")))
-    response = urllib.request.urlopen(request)
-    return json.loads(response.read())
+    def _http_get_json(self, url: str, username: str, token: str):
+        self.dbg("Fetching url: {}".format(url))
+        try:
+            request = urllib.request.Request(url)
+            if username.strip() and token.strip():
+                base64string = base64.b64encode((username + ":" + token).encode("ascii"))
+                request.add_header("Authorization", "Basic {}".format(base64string.decode("ascii")))
+            response = urllib.request.urlopen(request)
+            return json.loads(response.read())
+        except Exception as e:
+            self.log("Error fetching url: {}...".format(url))
+            self.err(e)
 
 
 def get_api_url(base_url: str, folder: str, depth: int):
